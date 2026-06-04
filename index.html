@@ -1,0 +1,130 @@
+import { useState } from "react";
+
+const STEPS = [
+  {
+    id: 1,
+    emoji: "💾",
+    title: "Guarda el archivo HTML",
+    desc: "Copia todo el código del artefacto 'index.html' que está justo arriba en el chat.",
+    checks: ["Copié el código HTML", "Lo pegué en un archivo nuevo", "Lo guardé como index.html"],
+    tip: "Abre el Bloc de Notas (Windows) o TextEdit (Mac), pega el código y guarda el archivo con el nombre exacto: index.html",
+  },
+  {
+    id: 2,
+    emoji: "📂",
+    title: "Crea una carpeta",
+    desc: "Crea una carpeta nueva en tu escritorio (puedes llamarla 'mi-tracker') y mete el archivo index.html adentro.",
+    checks: ["Creé la carpeta mi-tracker", "Moví el index.html adentro"],
+    tip: "La carpeta solo necesita ese único archivo. Nada más.",
+  },
+  {
+    id: 3,
+    emoji: "🚀",
+    title: "Arrastra a Vercel",
+    desc: "Entra a vercel.com, crea una cuenta gratuita si no tienes, y arrastra la carpeta directamente a la pantalla de nuevo proyecto.",
+    checks: ["Creé cuenta en Vercel", "Arrastré la carpeta", "Le di clic a Deploy", "Copié mi URL nueva 🎉"],
+    tip: "Vercel te da una URL pública del tipo mi-tracker.vercel.app — ábrela en el celular y agrégala al home como app.",
+    links: [
+      { label: "Ir a Vercel →", url: "https://vercel.com/new" },
+    ],
+  },
+];
+
+function CopyBtn({ text }) {
+  const [copied, setCopied] = useState(false);
+  return (
+    <button onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }} style={{ marginLeft:6, fontSize:10, padding:'2px 7px', borderRadius:6, border:'none', cursor:'pointer', fontWeight:600, background:copied?'#3B6D11':'#e0e0e0', color:copied?'#fff':'#555', transition:'all .2s' }}>
+      {copied ? '✓' : 'Copiar'}
+    </button>
+  );
+}
+
+export default function Guia() {
+  const [step, setStep] = useState(0);
+  const [checked, setChecked] = useState({});
+  const s = STEPS[step];
+  const totalChecks = s.checks.length;
+  const doneChecks = s.checks.filter((_,i) => checked[`${s.id}-${i}`]).length;
+  const allDone = doneChecks === totalChecks;
+  const isLast = step === STEPS.length - 1;
+  const toggle = key => setChecked(c => ({...c, [key]: !c[key]}));
+  const pct = Math.round(((step + (allDone ? 1 : doneChecks/totalChecks)) / STEPS.length) * 100);
+
+  return (
+    <div style={{ maxWidth:460, margin:'0 auto', padding:'1rem 0.75rem', fontFamily:'system-ui,-apple-system,sans-serif' }}>
+      <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}.fade{animation:fadeIn .25s ease}`}</style>
+
+      <div style={{ marginBottom:16 }}>
+        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
+          <span style={{ fontSize:16, fontWeight:700, color:'#1a1a1a' }}>🚀 Tracker a Vercel — sin instalar nada</span>
+          <span style={{ fontSize:11, color:'#999' }}>Paso {step+1} de {STEPS.length}</span>
+        </div>
+        <div style={{ height:6, background:'#f0f0f0', borderRadius:4, overflow:'hidden' }}>
+          <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#C0DD97,#3B6D11)', borderRadius:4, transition:'width .4s ease' }}/>
+        </div>
+        <div style={{ display:'flex', gap:4, marginTop:6 }}>
+          {STEPS.map((st,i) => (
+            <button key={st.id} onClick={() => setStep(i)} style={{ flex:1, height:4, borderRadius:3, border:'none', cursor:'pointer', background: i<step||(i===step&&allDone)?'#3B6D11':i===step?'#C0DD97':'#e8e8e8', transition:'background .3s' }} title={st.title}/>
+          ))}
+        </div>
+      </div>
+
+      <div key={s.id} className="fade" style={{ background:'#fff', border:'1px solid #ebebeb', borderRadius:16, padding:'18px 18px 14px', marginBottom:12, boxShadow:'0 2px 12px rgba(0,0,0,.04)' }}>
+        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
+          <span style={{ fontSize:32 }}>{s.emoji}</span>
+          <div>
+            <div style={{ fontSize:10, color:'#bbb', fontWeight:600, textTransform:'uppercase', letterSpacing:'.06em' }}>Paso {s.id} de {STEPS.length}</div>
+            <div style={{ fontSize:16, fontWeight:700, color:'#1a1a1a' }}>{s.title}</div>
+          </div>
+        </div>
+
+        <p style={{ fontSize:13, color:'#555', lineHeight:1.6, margin:'0 0 14px' }}>{s.desc}</p>
+
+        {s.links && (
+          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
+            {s.links.map((l,i) => (
+              <a key={i} href={l.url} target="_blank" rel="noreferrer" style={{ fontSize:13, padding:'7px 16px', borderRadius:9, background:'#3B6D11', color:'#fff', fontWeight:700, textDecoration:'none', display:'inline-block' }}>{l.label}</a>
+            ))}
+          </div>
+        )}
+
+        <div style={{ background:'#FFFBEC', border:'1px solid #F5E6A3', borderRadius:10, padding:'9px 12px', marginBottom:14 }}>
+          <span style={{ fontSize:12, color:'#7A5F00' }}>💡 {s.tip}</span>
+        </div>
+
+        <div style={{ borderTop:'1px solid #f0f0f0', paddingTop:12 }}>
+          <div style={{ fontSize:10, color:'#aaa', fontWeight:600, textTransform:'uppercase', marginBottom:8 }}>Marca cuando lo tengas listo</div>
+          {s.checks.map((chk,i) => {
+            const key = `${s.id}-${i}`;
+            const val = !!checked[key];
+            return (
+              <div key={i} onClick={() => toggle(key)} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', borderRadius:9, cursor:'pointer', marginBottom:4, background:val?'#EAF3DE':'#fafafa', border:`1px solid ${val?'#C0DD97':'#f0f0f0'}`, transition:'all .15s' }}>
+                <div style={{ width:20, height:20, borderRadius:6, flexShrink:0, background:val?'#3B6D11':'#fff', border:`2px solid ${val?'#3B6D11':'#ddd'}`, display:'flex', alignItems:'center', justifyContent:'center', transition:'all .15s' }}>
+                  {val && <span style={{ fontSize:12, color:'#fff' }}>✓</span>}
+                </div>
+                <span style={{ fontSize:13, color:val?'#3B6D11':'#555', fontWeight:val?600:400 }}>{chk}</span>
+              </div>
+            );
+          })}
+        </div>
+      </div>
+
+      <div style={{ display:'flex', gap:8 }}>
+        {step > 0 && (
+          <button onClick={() => setStep(s => s-1)} style={{ flex:1, padding:'11px', borderRadius:12, border:'1px solid #e0e0e0', background:'#fff', fontSize:13, color:'#777', cursor:'pointer', fontWeight:500 }}>← Anterior</button>
+        )}
+        {!isLast ? (
+          <button onClick={() => setStep(s => s+1)} style={{ flex:2, padding:'11px', borderRadius:12, border:'none', background:allDone?'#3B6D11':'#f0f0f0', color:allDone?'#fff':'#aaa', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all .2s' }}>
+            {allDone ? 'Siguiente →' : `Faltan ${totalChecks-doneChecks} por marcar`}
+          </button>
+        ) : (
+          <div style={{ flex:2, padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#EAF3DE,#d6edca)', border:'1px solid #C0DD97', textAlign:'center' }}>
+            <div style={{ fontSize:24, marginBottom:4 }}>🎉</div>
+            <div style={{ fontSize:14, fontWeight:700, color:'#3B6D11' }}>¡Tracker en el aire!</div>
+            <div style={{ fontSize:11, color:'#5a8a2a', marginTop:2 }}>Ya tienes tu app en Vercel, sin instalar nada</div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
+}
