@@ -1,130 +1,533 @@
-import { useState } from "react";
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Mi plata del mes</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react/18.2.0/umd/react.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/react-dom/18.2.0/umd/react-dom.production.min.js"></script>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/babel-standalone/7.23.2/babel.min.js"></script>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body { background: #f7f7f5; }
+    @keyframes spin { to { transform: rotate(360deg) } }
+    @keyframes fadeIn { from { opacity:0; transform:translateY(-4px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes slideDown { from { opacity:0; transform:translateY(-8px) } to { opacity:1; transform:translateY(0) } }
+    @keyframes flashGreen { 0% { background:#d6edca } 100% { background:transparent } }
+    .row-item:hover { background: rgba(0,0,0,.02) }
+    .grupo-header:hover { filter: brightness(.97) }
+    .flash-row { animation: flashGreen .8s ease }
+  </style>
+</head>
+<body>
+  <div id="root"></div>
+  <script type="text/babel">
+    const { useState, useEffect, useRef } = React;
 
-const STEPS = [
-  {
-    id: 1,
-    emoji: "💾",
-    title: "Guarda el archivo HTML",
-    desc: "Copia todo el código del artefacto 'index.html' que está justo arriba en el chat.",
-    checks: ["Copié el código HTML", "Lo pegué en un archivo nuevo", "Lo guardé como index.html"],
-    tip: "Abre el Bloc de Notas (Windows) o TextEdit (Mac), pega el código y guarda el archivo con el nombre exacto: index.html",
-  },
-  {
-    id: 2,
-    emoji: "📂",
-    title: "Crea una carpeta",
-    desc: "Crea una carpeta nueva en tu escritorio (puedes llamarla 'mi-tracker') y mete el archivo index.html adentro.",
-    checks: ["Creé la carpeta mi-tracker", "Moví el index.html adentro"],
-    tip: "La carpeta solo necesita ese único archivo. Nada más.",
-  },
-  {
-    id: 3,
-    emoji: "🚀",
-    title: "Arrastra a Vercel",
-    desc: "Entra a vercel.com, crea una cuenta gratuita si no tienes, y arrastra la carpeta directamente a la pantalla de nuevo proyecto.",
-    checks: ["Creé cuenta en Vercel", "Arrastré la carpeta", "Le di clic a Deploy", "Copié mi URL nueva 🎉"],
-    tip: "Vercel te da una URL pública del tipo mi-tracker.vercel.app — ábrela en el celular y agrégala al home como app.",
-    links: [
-      { label: "Ir a Vercel →", url: "https://vercel.com/new" },
-    ],
-  },
-];
+    const fmt = n => (n < 0 ? '−' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('es-CL');
+    const parse = s => { const n = parseInt(String(s).replace(/\D/g, '')); return isNaN(n) ? null : n; };
+    const INCOME = 3787000;
 
-function CopyBtn({ text }) {
-  const [copied, setCopied] = useState(false);
-  return (
-    <button onClick={() => { navigator.clipboard.writeText(text); setCopied(true); setTimeout(() => setCopied(false), 1500); }} style={{ marginLeft:6, fontSize:10, padding:'2px 7px', borderRadius:6, border:'none', cursor:'pointer', fontWeight:600, background:copied?'#3B6D11':'#e0e0e0', color:copied?'#fff':'#555', transition:'all .2s' }}>
-      {copied ? '✓' : 'Copiar'}
-    </button>
-  );
-}
+    const TEMPLATE = [
+      { grupo: 'Casa', icon: '🏠', color: '#8B6B3D', fijo: true, items: [
+        { id: 'ani_sueldo', desc: 'Sueldo Ani', budget: 700000 },
+        { id: 'ani_previred', desc: 'Cotizaciones Ani / Previred', budget: 190076 },
+      ]},
+      { grupo: 'Auto / transporte', icon: '🚗', color: '#3B7A4A', items: [
+        { id: 'bencina', desc: 'Bencina', budget: 95500 },
+        { id: 'tag', desc: 'Autopista / TAG / estacionamientos', budget: 86483 },
+        { id: 'seguro_auto', desc: 'Seguro auto', budget: 88137 },
+      ]},
+      { grupo: 'Seguros y salud', icon: '🩺', color: '#2994A5', fijo: true, items: [
+        { id: 'apv', desc: 'APV', budget: 119525 },
+        { id: 'seg_christus_cas', desc: 'Seguro Christus CAS', budget: 33000 },
+        { id: 'seg_christus_uc', desc: 'Seguro Christus UC + CAS', budget: 11500 },
+        { id: 'seg_fraude', desc: 'Seguro fraude', budget: 1052 },
+      ]},
+      { grupo: 'Créditos / banco', icon: '🏦', color: '#A32D2D', fijo: true, items: [
+        { id: 'credito', desc: 'Crédito consumo', budget: 142000 },
+        { id: 'cuota_santander', desc: 'Cuota Santander', budget: 17500 },
+      ]},
+      { grupo: 'Suscripciones y servicios', icon: '📺', color: '#534AB7', fijo: true, items: [
+        { id: 'gamma_gpt', desc: 'Gamma + ChatGPT', budget: 30000 },
+        { id: 'club_lectura', desc: 'Club de lectura', budget: 25000 },
+        { id: 'telefono', desc: 'Teléfono / recargas', budget: 16990 },
+        { id: 'gym', desc: 'Gimnasio online', budget: 16990 },
+        { id: 'baile', desc: 'Baile con vecinas', budget: 16990 },
+        { id: 'hbo', desc: 'HBO', budget: 13990 },
+        { id: 'meli_disney', desc: 'Meli + Disney', budget: 12990 },
+        { id: 'donaciones', desc: 'Donaciones', budget: 5000 },
+      ]},
+      { grupo: 'Alimentación', icon: '🍽️', color: '#D4860A', meta: true, items: [
+        { id: 'delivery', desc: 'Delivery Uber Eats', budget: 100000 },
+        { id: 'comida_cafes', desc: 'Comida y cafés', budget: 50000 },
+      ]},
+      { grupo: 'Compras', icon: '🛒', color: '#C73D6B', meta: true, items: [
+        { id: 'panoramas_ninos', desc: 'Compras y panoramas', budget: 200000 },
+        { id: 'retail', desc: 'Compras retail / online', budget: 150000 },
+      ]},
+      { grupo: 'Ingresos extra', icon: '💰', color: '#3B6D11', items: [
+        { id: 'herencia', desc: 'Herencia tata', budget: -70000 },
+      ]},
+    ];
 
-export default function Guia() {
-  const [step, setStep] = useState(0);
-  const [checked, setChecked] = useState({});
-  const s = STEPS[step];
-  const totalChecks = s.checks.length;
-  const doneChecks = s.checks.filter((_,i) => checked[`${s.id}-${i}`]).length;
-  const allDone = doneChecks === totalChecks;
-  const isLast = step === STEPS.length - 1;
-  const toggle = key => setChecked(c => ({...c, [key]: !c[key]}));
-  const pct = Math.round(((step + (allDone ? 1 : doneChecks/totalChecks)) / STEPS.length) * 100);
+    const MONTHS = ['2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'];
+    const ML = {'2026-05':'Mayo','2026-06':'Junio','2026-07':'Julio','2026-08':'Agosto','2026-09':'Septiembre','2026-10':'Octubre','2026-11':'Noviembre','2026-12':'Diciembre'};
+    const KEY = 'mj_tracker_v6';
 
-  return (
-    <div style={{ maxWidth:460, margin:'0 auto', padding:'1rem 0.75rem', fontFamily:'system-ui,-apple-system,sans-serif' }}>
-      <style>{`@keyframes fadeIn{from{opacity:0;transform:translateY(6px)}to{opacity:1;transform:translateY(0)}}.fade{animation:fadeIn .25s ease}`}</style>
+    function fresh() {
+      const a = {};
+      TEMPLATE.filter(g => !g.fijo).forEach(g => g.items.forEach(i => { a[i.id] = null; }));
+      return { actuals: a, pagoTC: 0, nota: '', diaActual: new Date().getDate(), otros: [] };
+    }
+    function makeSeed() {
+      const seed = {};
+      MONTHS.forEach(m => { seed[m] = fresh(); });
+      seed['2026-05'] = {
+        actuals: { bencina:89380,tag:74801,seguro_auto:92668,apv:119525,seg_christus_cas:33000,seg_christus_uc:11639,seg_fraude:1052,credito:141299,cuota_santander:17500,delivery:91452,comida_cafes:490158,panoramas_ninos:324660,retail:417453,herencia:-70000 },
+        pagoTC: 2601105, nota: 'Punto Ticket $268K reembolsado. Ropa $417K muy alto.', diaActual: 31, otros: []
+      };
+      seed['2026-06'] = { ...fresh(), pagoTC: 2000000 };
+      return seed;
+    }
 
-      <div style={{ marginBottom:16 }}>
-        <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:6 }}>
-          <span style={{ fontSize:16, fontWeight:700, color:'#1a1a1a' }}>🚀 Tracker a Vercel — sin instalar nada</span>
-          <span style={{ fontSize:11, color:'#999' }}>Paso {step+1} de {STEPS.length}</span>
+    function Divider({ children }) {
+      return (
+        <div style={{ display:'flex', alignItems:'center', gap:8, padding:'8px 0', margin:'4px 0' }}>
+          <div style={{ flex:1, height:.5, background:'#e0e0e0' }}/>
+          <span style={{ fontSize:9, color:'#aaa', fontWeight:600, textTransform:'uppercase', letterSpacing:'.08em' }}>{children}</span>
+          <div style={{ flex:1, height:.5, background:'#e0e0e0' }}/>
         </div>
-        <div style={{ height:6, background:'#f0f0f0', borderRadius:4, overflow:'hidden' }}>
-          <div style={{ height:'100%', width:`${pct}%`, background:'linear-gradient(90deg,#C0DD97,#3B6D11)', borderRadius:4, transition:'width .4s ease' }}/>
-        </div>
-        <div style={{ display:'flex', gap:4, marginTop:6 }}>
-          {STEPS.map((st,i) => (
-            <button key={st.id} onClick={() => setStep(i)} style={{ flex:1, height:4, borderRadius:3, border:'none', cursor:'pointer', background: i<step||(i===step&&allDone)?'#3B6D11':i===step?'#C0DD97':'#e8e8e8', transition:'background .3s' }} title={st.title}/>
-          ))}
-        </div>
-      </div>
+      );
+    }
 
-      <div key={s.id} className="fade" style={{ background:'#fff', border:'1px solid #ebebeb', borderRadius:16, padding:'18px 18px 14px', marginBottom:12, boxShadow:'0 2px 12px rgba(0,0,0,.04)' }}>
-        <div style={{ display:'flex', alignItems:'center', gap:10, marginBottom:10 }}>
-          <span style={{ fontSize:32 }}>{s.emoji}</span>
-          <div>
-            <div style={{ fontSize:10, color:'#bbb', fontWeight:600, textTransform:'uppercase', letterSpacing:'.06em' }}>Paso {s.id} de {STEPS.length}</div>
-            <div style={{ fontSize:16, fontWeight:700, color:'#1a1a1a' }}>{s.title}</div>
+    function App() {
+      const [data, setData] = useState(null);
+      const [month, setMonth] = useState('2026-06');
+      const [loading, setLoading] = useState(true);
+      const [openGrupo, setOpenGrupo] = useState(null);
+      const [adding, setAdding] = useState(null);
+      const [editing, setEditing] = useState(null);
+      const [editVal, setEditVal] = useState('');
+      const [editNota, setEditNota] = useState(false);
+      const [notaVal, setNotaVal] = useState('');
+      const [editPagoTC, setEditPagoTC] = useState(false);
+      const [pagoTCVal, setPagoTCVal] = useState('');
+      const [saved, setSaved] = useState(false);
+      const [saveError, setSaveError] = useState(false);
+      const [editDay, setEditDay] = useState(false);
+      const [dayVal, setDayVal] = useState('');
+      const [flash, setFlash] = useState(null);
+      const [addingOtro, setAddingOtro] = useState(false);
+      const [otroDesc, setOtroDesc] = useState('');
+      const [otroMonto, setOtroMonto] = useState('');
+      const [editingOtro, setEditingOtro] = useState(null);
+      const dataRef = useRef(null);
+
+      useEffect(() => {
+        let loaded = null;
+        try {
+          const stored = localStorage.getItem(KEY);
+          if (stored) loaded = JSON.parse(stored);
+        } catch(e) {}
+        if (!loaded) {
+          loaded = makeSeed();
+          try { localStorage.setItem(KEY, JSON.stringify(loaded)); } catch(e) {}
+        }
+        MONTHS.forEach(m => { if (!loaded[m]) loaded[m] = fresh(); });
+        dataRef.current = loaded;
+        setData(loaded);
+        setLoading(false);
+      }, []);
+
+      const save = d => {
+        dataRef.current = d;
+        setData(d);
+        try {
+          localStorage.setItem(KEY, JSON.stringify(d));
+          setSaveError(false);
+          setSaved(true);
+          setTimeout(() => setSaved(false), 1800);
+        } catch(e) { setSaveError(true); }
+      };
+
+      const fd = () => dataRef.current || {};
+      const fm = () => (dataRef.current && dataRef.current[month]) || fresh();
+
+      const setPagoTC = () => { const v = parse(pagoTCVal); save({ ...fd(), [month]: { ...fm(), pagoTC: v||0 } }); setEditPagoTC(false); };
+      const setDia = () => {
+        const y = parseInt(month.split('-')[0]), mo = parseInt(month.split('-')[1])-1;
+        const dim = new Date(y, mo+1, 0).getDate();
+        const v = Math.min(Math.max(1, parseInt(dayVal)||1), dim);
+        save({ ...fd(), [month]: { ...fm(), diaActual: v } }); setEditDay(false);
+      };
+      const doAdd = (id, budget) => {
+        const v = parse(adding?.val); if (!v) { setAdding(null); return; }
+        const cur = fm(); const prev = cur.actuals[id]??0;
+        const next = budget < 0 ? -(Math.abs(prev)+Math.abs(v)) : prev+v;
+        save({ ...fd(), [month]: { ...cur, actuals: { ...cur.actuals, [id]: next } } });
+        setFlash(id); setTimeout(() => setFlash(null), 800); setAdding(null);
+      };
+      const doEdit = id => {
+        const v = parse(editVal); if (v===null) { setEditing(null); return; }
+        const cur = fm(); save({ ...fd(), [month]: { ...cur, actuals: { ...cur.actuals, [id]: v } } }); setEditing(null);
+      };
+      const addOtro = () => {
+        const v = parse(otroMonto); if (!v || !otroDesc.trim()) return;
+        const cur = fm(); const item = { id: String(Date.now()), desc: otroDesc.trim(), amount: v };
+        save({ ...fd(), [month]: { ...cur, otros: [...(cur.otros||[]), item] } });
+        setOtroDesc(''); setOtroMonto(''); setAddingOtro(false);
+      };
+      const removeOtro = id => { const cur = fm(); save({ ...fd(), [month]: { ...cur, otros: (cur.otros||[]).filter(o => o.id!==id) } }); };
+      const saveEditOtro = () => {
+        if (!editingOtro) return;
+        const v = parse(String(editingOtro.amount)); if (!v||!editingOtro.desc.trim()) { setEditingOtro(null); return; }
+        const cur = fm(); save({ ...fd(), [month]: { ...cur, otros: (cur.otros||[]).map(o => o.id===editingOtro.id ? {...o,desc:editingOtro.desc,amount:v} : o) } }); setEditingOtro(null);
+      };
+      const saveNota = () => { save({ ...fd(), [month]: { ...fm(), nota: notaVal } }); setEditNota(false); };
+
+      if (loading || !data) return (
+        <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', flexDirection:'column', gap:12 }}>
+          <div style={{ width:32, height:32, borderRadius:'50%', border:'3px solid #C0DD97', borderTopColor:'#3B6D11', animation:'spin 0.8s linear infinite' }} />
+          <span style={{ fontSize:13, color:'#888' }}>Cargando...</span>
+        </div>
+      );
+
+      const md = data[month] || fresh();
+      const midx = MONTHS.indexOf(month);
+      const otros = md.otros || [];
+      const totalFijo = TEMPLATE.filter(g=>g.fijo).reduce((s,g)=>s+g.items.reduce((ss,i)=>ss+i.budget,0),0);
+      const totalVarA = TEMPLATE.filter(g=>!g.fijo).reduce((s,g)=>s+g.items.reduce((ss,i)=>ss+(md.actuals[i.id]??0),0),0);
+      const totalOtros = otros.reduce((s,o)=>s+o.amount,0);
+      const totalActual = totalFijo + totalVarA + totalOtros;
+      const totalVarB = TEMPLATE.filter(g=>!g.fijo).reduce((s,g)=>s+g.items.reduce((ss,i)=>ss+i.budget,0),0);
+      const totalBudget = totalFijo + totalVarB;
+      const hasVar = Object.values(md.actuals||{}).some(v=>v!==null) || otros.length>0;
+      const libre_b = INCOME - totalBudget - (md.pagoTC||0);
+      const libre_a = INCOME - totalActual - (md.pagoTC||0);
+      const libreShow = hasVar ? libre_a : libre_b;
+      const isPositive = libreShow >= 0;
+      const pctGasto = Math.min(100, Math.round(totalActual/INCOME*100));
+      const pctTC = Math.min(100-pctGasto, Math.round((md.pagoTC||0)/INCOME*100));
+
+      return (
+        <div style={{ maxWidth:480, margin:'0 auto', padding:'1rem 0.75rem', fontFamily:'system-ui,-apple-system,sans-serif' }}>
+
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem', flexWrap:'wrap', gap:8 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+              <span style={{ fontSize:20 }}>📊</span>
+              <span style={{ fontSize:17, fontWeight:600, color:'#1a1a1a' }}>Mi plata del mes</span>
+              {saved && <span style={{ fontSize:10, padding:'2px 7px', borderRadius:10, background:'#EAF3DE', color:'#3B6D11', fontWeight:500 }}>✓ Guardado</span>}
+              {saveError && <span style={{ fontSize:10, padding:'2px 7px', borderRadius:10, background:'#FCEBEB', color:'#A32D2D', fontWeight:600 }}>⚠ Error al guardar</span>}
+            </div>
+            <div style={{ display:'flex', alignItems:'center', gap:4, background:'#f5f5f5', borderRadius:10, padding:'3px 6px' }}>
+              <button onClick={()=>setMonth(MONTHS[midx-1])} disabled={midx<=0} style={{ background:'none', border:'none', cursor:midx<=0?'default':'pointer', opacity:midx<=0?.3:1, fontSize:16, padding:'2px 6px', color:'#444' }}>‹</button>
+              <span style={{ fontSize:13, fontWeight:600, minWidth:90, textAlign:'center', color:'#333' }}>{ML[month]} 2026</span>
+              <button onClick={()=>setMonth(MONTHS[midx+1])} disabled={midx>=MONTHS.length-1} style={{ background:'none', border:'none', cursor:midx>=MONTHS.length-1?'default':'pointer', opacity:midx>=MONTHS.length-1?.3:1, fontSize:16, padding:'2px 6px', color:'#444' }}>›</button>
+            </div>
           </div>
-        </div>
 
-        <p style={{ fontSize:13, color:'#555', lineHeight:1.6, margin:'0 0 14px' }}>{s.desc}</p>
-
-        {s.links && (
-          <div style={{ display:'flex', gap:8, flexWrap:'wrap', marginBottom:14 }}>
-            {s.links.map((l,i) => (
-              <a key={i} href={l.url} target="_blank" rel="noreferrer" style={{ fontSize:13, padding:'7px 16px', borderRadius:9, background:'#3B6D11', color:'#fff', fontWeight:700, textDecoration:'none', display:'inline-block' }}>{l.label}</a>
-            ))}
-          </div>
-        )}
-
-        <div style={{ background:'#FFFBEC', border:'1px solid #F5E6A3', borderRadius:10, padding:'9px 12px', marginBottom:14 }}>
-          <span style={{ fontSize:12, color:'#7A5F00' }}>💡 {s.tip}</span>
-        </div>
-
-        <div style={{ borderTop:'1px solid #f0f0f0', paddingTop:12 }}>
-          <div style={{ fontSize:10, color:'#aaa', fontWeight:600, textTransform:'uppercase', marginBottom:8 }}>Marca cuando lo tengas listo</div>
-          {s.checks.map((chk,i) => {
-            const key = `${s.id}-${i}`;
-            const val = !!checked[key];
+          {(()=>{
+            const y=parseInt(month.split('-')[0]),mo=parseInt(month.split('-')[1])-1;
+            const dim=new Date(y,mo+1,0).getDate();
+            const day=Math.min(Math.max(1,md.diaActual||new Date().getDate()),dim);
+            const pctDay=Math.round(day/dim*100);
+            const daysLeft=dim-day;
+            const spentPct=Math.round(totalActual/INCOME*100);
+            const onTrack=spentPct<=pctDay;
             return (
-              <div key={i} onClick={() => toggle(key)} style={{ display:'flex', alignItems:'center', gap:10, padding:'7px 10px', borderRadius:9, cursor:'pointer', marginBottom:4, background:val?'#EAF3DE':'#fafafa', border:`1px solid ${val?'#C0DD97':'#f0f0f0'}`, transition:'all .15s' }}>
-                <div style={{ width:20, height:20, borderRadius:6, flexShrink:0, background:val?'#3B6D11':'#fff', border:`2px solid ${val?'#3B6D11':'#ddd'}`, display:'flex', alignItems:'center', justifyContent:'center', transition:'all .15s' }}>
-                  {val && <span style={{ fontSize:12, color:'#fff' }}>✓</span>}
+              <div style={{ background:'#fff', border:'1px solid #ebebeb', borderRadius:12, padding:'11px 16px', marginBottom:8 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:7 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:6, flexWrap:'wrap' }}>
+                    <span style={{ fontSize:14 }}>📅</span>
+                    {editDay ? (
+                      <div style={{ display:'flex', alignItems:'center', gap:4 }}>
+                        <input autoFocus value={dayVal} onChange={e=>setDayVal(e.target.value.replace(/\D/g,''))}
+                          onBlur={setDia} onKeyDown={e=>{if(e.key==='Enter')setDia();if(e.key==='Escape')setEditDay(false);}}
+                          style={{ width:36, fontSize:13, fontWeight:600, padding:'2px 5px', borderRadius:7, border:'1.5px solid #3B6D11', textAlign:'center', outline:'none' }}/>
+                        <span style={{ fontSize:12, color:'#999' }}>de {dim}</span>
+                        <button onClick={setDia} style={{ fontSize:11, padding:'2px 7px', background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
+                      </div>
+                    ) : (
+                      <span onClick={()=>{setDayVal(String(day));setEditDay(true);}} style={{ fontSize:12, fontWeight:600, color:'#333', cursor:'pointer' }}>
+                        Día {day}<span style={{ fontWeight:400, color:'#999' }}> de {dim}</span><span style={{ fontSize:11, color:'#bbb', marginLeft:4 }}>✎</span>
+                      </span>
+                    )}
+                    <span style={{ fontSize:10, padding:'2px 7px', borderRadius:8, background:'#f0f0f0', color:'#666', fontWeight:500 }}>{daysLeft} días restantes</span>
+                  </div>
+                  <span style={{ fontSize:11, padding:'2px 8px', borderRadius:8, fontWeight:600, background:onTrack?'#EAF3DE':'#FCEBEB', color:onTrack?'#3B6D11':'#A32D2D' }}>
+                    {onTrack?'✓ Al día':'⚠ Ritmo alto'}
+                  </span>
                 </div>
-                <span style={{ fontSize:13, color:val?'#3B6D11':'#555', fontWeight:val?600:400 }}>{chk}</span>
+                <div style={{ height:6, background:'#f0f0f0', borderRadius:4, overflow:'hidden', position:'relative' }}>
+                  <div style={{ height:'100%', width:`${pctDay}%`, background:'linear-gradient(90deg,#C0DD97,#3B6D11)', borderRadius:4, transition:'width .5s ease' }}/>
+                  <div style={{ position:'absolute', top:0, left:`${Math.min(spentPct,100)}%`, height:'100%', width:2, background:'#E24B4A', transform:'translateX(-1px)', borderRadius:2 }}/>
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', marginTop:5 }}>
+                  <span style={{ fontSize:10, color:'#bbb' }}>Mes transcurrido: {pctDay}%</span>
+                  <span style={{ fontSize:10, color:'#E24B4A', fontWeight:500 }}>Gasto registrado: {spentPct}%</span>
+                </div>
+              </div>
+            );
+          })()}
+
+          <div style={{ background:'linear-gradient(135deg,#EAF3DE,#d6edca)', border:'1px solid #C0DD97', borderRadius:14, padding:'12px 16px', marginBottom:8, display:'flex', alignItems:'center', gap:10 }}>
+            <span style={{ fontSize:20 }}>💼</span>
+            <div style={{ flex:1, display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
+              <span style={{ fontSize:13, fontWeight:500, color:'#27500A' }}>Remuneración UDD</span>
+              <span style={{ fontSize:19, fontWeight:700, color:'#3B6D11', letterSpacing:'-0.5px' }}>+{fmt(INCOME)}</span>
+            </div>
+          </div>
+
+          <Divider>🔒 Gastos fijos — se descuentan día 1</Divider>
+
+          {TEMPLATE.filter(g=>g.fijo).map(grupo=>{
+            const gb=grupo.items.reduce((s,i)=>s+i.budget,0);
+            const isOpen=openGrupo===grupo.grupo;
+            return (
+              <div key={grupo.grupo} style={{ marginBottom:4 }}>
+                <div className="grupo-header" onClick={()=>setOpenGrupo(isOpen?null:grupo.grupo)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', cursor:'pointer', background:isOpen?grupo.color+'10':'#fafafa', border:`1px solid ${isOpen?grupo.color+'40':'#e8e8e8'}`, borderRadius:isOpen?'12px 12px 0 0':12, transition:'all .15s ease' }}>
+                  <span style={{ fontSize:17 }}>{grupo.icon}</span>
+                  <div style={{ flex:1, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <span style={{ fontSize:13, fontWeight:600, color:'#555' }}>{grupo.grupo}</span>
+                      <span style={{ fontSize:9, padding:'2px 6px', borderRadius:6, background:'#EDEDF8', color:grupo.color, fontWeight:700 }}>FIJO</span>
+                    </div>
+                    <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                      <span style={{ fontSize:13, fontWeight:700, color:grupo.color }}>−{fmt(gb)}</span>
+                      <span style={{ fontSize:11, color:'#bbb', display:'inline-block', transform:isOpen?'rotate(180deg)':'rotate(0deg)', transition:'transform .2s' }}>▾</span>
+                    </div>
+                  </div>
+                </div>
+                {isOpen && (
+                  <div style={{ border:`1px solid ${grupo.color}30`, borderTop:'none', borderRadius:'0 0 12px 12px', padding:'4px 14px 10px', background:'#fcfcfc' }}>
+                    {grupo.items.map((item,idx)=>(
+                      <div key={item.id} style={{ display:'flex', alignItems:'center', padding:'7px 4px', borderBottom:idx<grupo.items.length-1?'1px solid #f5f5f5':'none' }}>
+                        <span style={{ fontSize:13, color:'#777', flex:1 }}>{item.desc}</span>
+                        <span style={{ fontSize:12, color:'#aaa' }}>{fmt(item.budget)}</span>
+                        <span style={{ fontSize:10, marginLeft:8, color:'#c0c0c0' }}>✓ auto</span>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             );
           })}
-        </div>
-      </div>
 
-      <div style={{ display:'flex', gap:8 }}>
-        {step > 0 && (
-          <button onClick={() => setStep(s => s-1)} style={{ flex:1, padding:'11px', borderRadius:12, border:'1px solid #e0e0e0', background:'#fff', fontSize:13, color:'#777', cursor:'pointer', fontWeight:500 }}>← Anterior</button>
-        )}
-        {!isLast ? (
-          <button onClick={() => setStep(s => s+1)} style={{ flex:2, padding:'11px', borderRadius:12, border:'none', background:allDone?'#3B6D11':'#f0f0f0', color:allDone?'#fff':'#aaa', fontSize:13, fontWeight:700, cursor:'pointer', transition:'all .2s' }}>
-            {allDone ? 'Siguiente →' : `Faltan ${totalChecks-doneChecks} por marcar`}
-          </button>
-        ) : (
-          <div style={{ flex:2, padding:'14px', borderRadius:12, background:'linear-gradient(135deg,#EAF3DE,#d6edca)', border:'1px solid #C0DD97', textAlign:'center' }}>
-            <div style={{ fontSize:24, marginBottom:4 }}>🎉</div>
-            <div style={{ fontSize:14, fontWeight:700, color:'#3B6D11' }}>¡Tracker en el aire!</div>
-            <div style={{ fontSize:11, color:'#5a8a2a', marginTop:2 }}>Ya tienes tu app en Vercel, sin instalar nada</div>
+          <Divider>Gastos variables — toca para ir sumando</Divider>
+
+          {TEMPLATE.filter(g=>!g.fijo).map(grupo=>{
+            const gb=grupo.items.reduce((s,i)=>s+i.budget,0);
+            const ga=grupo.items.reduce((s,i)=>s+(md.actuals[i.id]??0),0);
+            const ha=grupo.items.some(i=>md.actuals[i.id]!==null);
+            const isOpen=openGrupo===grupo.grupo;
+            const isOver=ha&&ga>gb&&gb>0;
+            const pct=Math.min(100,Math.round(Math.abs(gb)/800000*100));
+            const pctA=ha?Math.min(100,Math.round(Math.abs(ga)/800000*100)):0;
+            return (
+              <div key={grupo.grupo} style={{ marginBottom:4 }}>
+                <div className="grupo-header" onClick={()=>setOpenGrupo(isOpen?null:grupo.grupo)} style={{ display:'flex', alignItems:'center', gap:10, padding:'10px 14px', cursor:'pointer', background:isOpen?grupo.color+'12':'#fff', border:`1px solid ${isOpen?grupo.color+'50':'#ebebeb'}`, borderRadius:isOpen?'12px 12px 0 0':12, transition:'all .15s ease', boxShadow:isOpen?`0 2px 8px ${grupo.color}15`:'none' }}>
+                  <span style={{ fontSize:17 }}>{grupo.icon}</span>
+                  <div style={{ flex:1 }}>
+                    <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:5 }}>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <span style={{ fontSize:13, fontWeight:600, color:'#1a1a1a' }}>{grupo.grupo}</span>
+                        {grupo.meta && <span style={{ fontSize:9, padding:'2px 6px', borderRadius:6, background:'#FAEEDA', color:'#854F0B', fontWeight:600 }}>META</span>}
+                      </div>
+                      <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+                        <span style={{ fontSize:11, color:'#999' }}>{gb<0?'+':''}{fmt(gb)}</span>
+                        {ha && <span style={{ fontSize:11, padding:'2px 7px', borderRadius:8, fontWeight:600, background:isOver?'#FCEBEB':'#EAF3DE', color:isOver?'#A32D2D':'#3B6D11' }}>{isOver?'⚠ ':''}{gb<0?'+':''}{fmt(ga)}</span>}
+                        <span style={{ fontSize:11, color:'#bbb', display:'inline-block', transform:isOpen?'rotate(180deg)':'rotate(0deg)', transition:'transform .2s' }}>▾</span>
+                      </div>
+                    </div>
+                    <div style={{ height:4, background:'#f0f0f0', borderRadius:3, overflow:'hidden', position:'relative' }}>
+                      <div style={{ position:'absolute', height:'100%', width:`${pct}%`, background:grupo.color+'25', borderRadius:3 }}/>
+                      {ha && <div style={{ position:'absolute', height:'100%', width:`${pctA}%`, background:isOver?'#E24B4A':grupo.color, borderRadius:3, opacity:.8, transition:'width .5s ease' }}/>}
+                    </div>
+                  </div>
+                </div>
+                {isOpen && (
+                  <div style={{ border:`1px solid ${grupo.color}40`, borderTop:'none', borderRadius:'0 0 12px 12px', padding:'4px 14px 12px', background:grupo.color+'05' }}>
+                    <div style={{ display:'flex', justifyContent:'flex-end', padding:'5px 0 7px', borderBottom:'1px solid #f0f0f0' }}>
+                      <span style={{ fontSize:10, color:'#aaa', width:80, textAlign:'right', fontWeight:600, textTransform:'uppercase' }}>Meta</span>
+                      <span style={{ fontSize:10, color:'#aaa', width:110, textAlign:'right', fontWeight:600, textTransform:'uppercase' }}>Acumulado</span>
+                    </div>
+                    {grupo.items.map((item,idx)=>{
+                      const actual=md.actuals[item.id];
+                      const itemOver=actual!==null&&actual>item.budget&&item.budget>0;
+                      const isAdding=adding?.id===item.id;
+                      const isEditing=editing===item.id;
+                      const pctItem=actual!==null&&item.budget>0?Math.min(100,Math.round(actual/item.budget*100)):0;
+                      return (
+                        <div key={item.id} className={flash===item.id?'flash-row row-item':'row-item'} style={{ padding:'8px 4px', borderBottom:idx<grupo.items.length-1?'1px solid #f5f5f5':'none', borderRadius:6 }}>
+                          <div style={{ display:'flex', alignItems:'center' }}>
+                            <span style={{ fontSize:13, color:'#333', flex:1 }}>{item.desc}</span>
+                            <span style={{ fontSize:12, color:'#ccc', width:80, textAlign:'right', flexShrink:0 }}>{item.budget<0?'+':''}{fmt(item.budget)}</span>
+                            <div style={{ width:110, flexShrink:0, textAlign:'right', display:'flex', justifyContent:'flex-end', alignItems:'center', gap:4 }}>
+                              {isEditing ? (
+                                <div style={{ display:'flex', gap:3 }}>
+                                  <input autoFocus value={editVal} onChange={e=>setEditVal(e.target.value)}
+                                    onBlur={()=>doEdit(item.id)} onKeyDown={e=>{if(e.key==='Enter')doEdit(item.id);if(e.key==='Escape')setEditing(null);}}
+                                    placeholder="total" style={{ width:66, fontSize:12, padding:'3px 6px', borderRadius:7, border:`1.5px solid ${grupo.color}`, textAlign:'right', outline:'none' }}/>
+                                  <button onClick={()=>doEdit(item.id)} style={{ fontSize:11, padding:'2px 6px', background:grupo.color, color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
+                                </div>
+                              ) : (
+                                <>
+                                  <span onClick={()=>{setAdding({id:item.id,val:''});setEditing(null);}} style={{ fontSize:13, fontWeight:700, cursor:'pointer', padding:'3px 8px', borderRadius:8, color:actual===null?'#ccc':itemOver?'#A32D2D':'#3B6D11', background:actual===null?'#f7f7f7':'transparent', border:actual===null?'1px dashed #e0e0e0':'none' }}>{actual===null?'+ sumar':(actual<0?'+':'')+fmt(actual)}</span>
+                                  {actual!==null && <span onClick={()=>{setEditVal(String(actual));setEditing(item.id);setAdding(null);}} style={{ fontSize:10, color:'#ccc', cursor:'pointer', padding:'2px 3px' }}>✎</span>}
+                                </>
+                              )}
+                            </div>
+                          </div>
+                          {actual!==null&&item.budget>0 && (
+                            <div style={{ height:3, background:'#f0f0f0', borderRadius:2, marginTop:5, overflow:'hidden' }}>
+                              <div style={{ height:'100%', width:`${pctItem}%`, borderRadius:2, transition:'width .5s ease', background:itemOver?'#E24B4A':grupo.color, opacity:.7 }}/>
+                            </div>
+                          )}
+                          {isAdding && (
+                            <div style={{ marginTop:8, padding:'10px 12px', background:'#fff', borderRadius:10, border:`1.5px solid ${grupo.color}` }}>
+                              <div style={{ fontSize:11, color:'#888', marginBottom:6, display:'flex', justifyContent:'space-between' }}>
+                                <span>¿Cuánto gastaste en <strong style={{ color:'#333' }}>{item.desc}</strong>?</span>
+                                {actual!==null && <span style={{ fontSize:10, color:'#aaa' }}>Total: {fmt(actual)}</span>}
+                              </div>
+                              <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                                <span style={{ fontSize:13, color:'#aaa' }}>+$</span>
+                                <input autoFocus value={adding.val} onChange={e=>setAdding({id:item.id,val:e.target.value.replace(/\D/g,'')})}
+                                  onKeyDown={e=>{if(e.key==='Enter')doAdd(item.id,item.budget);if(e.key==='Escape')setAdding(null);}}
+                                  placeholder="ej: 8500" style={{ flex:1, fontSize:15, fontWeight:600, padding:'6px 10px', borderRadius:8, border:`1.5px solid ${grupo.color}`, outline:'none', textAlign:'right', color:'#1a1a1a' }}/>
+                                <button onClick={()=>doAdd(item.id,item.budget)} style={{ fontSize:13, padding:'6px 14px', background:grupo.color, color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontWeight:700 }}>Sumar</button>
+                                <button onClick={()=>setAdding(null)} style={{ fontSize:12, padding:'6px 10px', background:'#f0f0f0', color:'#888', border:'none', borderRadius:8, cursor:'pointer' }}>✕</button>
+                              </div>
+                              {adding.val && (
+                                <div style={{ fontSize:11, color:'#888', marginTop:6, textAlign:'right' }}>
+                                  Nuevo total → <strong style={{ color:(actual??0)+parseInt(adding.val)>item.budget&&item.budget>0?'#A32D2D':'#3B6D11' }}>{fmt((actual??0)+(parseInt(adding.val)||0))}</strong>
+                                  {item.budget>0 && <span style={{ color:'#bbb' }}> / {fmt(item.budget)}</span>}
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            );
+          })}
+
+          <Divider>✏️ Otros gastos</Divider>
+          <div style={{ background:'#fff', border:'1px solid #ebebeb', borderRadius:12, overflow:'hidden', marginBottom:4 }}>
+            {otros.map(o=>(
+              <div key={o.id} style={{ padding:'9px 14px', borderBottom:'1px solid #f5f5f5' }}>
+                {editingOtro?.id===o.id ? (
+                  <div style={{ display:'flex', gap:6, alignItems:'center', flexWrap:'wrap' }}>
+                    <input value={editingOtro.desc} onChange={e=>setEditingOtro({...editingOtro,desc:e.target.value})} style={{ flex:2, minWidth:100, fontSize:13, padding:'4px 8px', borderRadius:7, border:'1.5px solid #8B6B8A', outline:'none' }}/>
+                    <input value={editingOtro.amount} onChange={e=>setEditingOtro({...editingOtro,amount:e.target.value.replace(/\D/g,'')})} onKeyDown={e=>{if(e.key==='Enter')saveEditOtro();}} style={{ width:90, fontSize:13, fontWeight:600, padding:'4px 8px', borderRadius:7, border:'1.5px solid #8B6B8A', outline:'none', textAlign:'right' }}/>
+                    <button onClick={saveEditOtro} style={{ fontSize:12, padding:'4px 10px', background:'#8B6B8A', color:'#fff', border:'none', borderRadius:7, cursor:'pointer', fontWeight:600 }}>✓</button>
+                    <button onClick={()=>setEditingOtro(null)} style={{ fontSize:12, padding:'4px 8px', background:'#eee', color:'#888', border:'none', borderRadius:7, cursor:'pointer' }}>✕</button>
+                  </div>
+                ) : (
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontSize:13, color:'#333', flex:1 }}>{o.desc}</span>
+                    <span style={{ fontSize:13, fontWeight:700, color:'#C73D6B' }}>−{fmt(o.amount)}</span>
+                    <span onClick={()=>setEditingOtro({id:o.id,desc:o.desc,amount:String(o.amount)})} style={{ fontSize:11, color:'#ccc', cursor:'pointer', padding:'2px 4px' }}>✎</span>
+                    <span onClick={()=>removeOtro(o.id)} style={{ fontSize:13, color:'#f0a0a0', cursor:'pointer', padding:'2px 4px' }}>×</span>
+                  </div>
+                )}
+              </div>
+            ))}
+            {otros.length>0 && (
+              <div style={{ padding:'7px 14px', background:'#fafafa', display:'flex', justifyContent:'space-between', borderBottom:'1px solid #f0f0f0' }}>
+                <span style={{ fontSize:11, color:'#aaa' }}>Total otros gastos</span>
+                <span style={{ fontSize:13, fontWeight:700, color:'#C73D6B' }}>−{fmt(totalOtros)}</span>
+              </div>
+            )}
+            {addingOtro ? (
+              <div style={{ padding:'12px 14px' }}>
+                <input autoFocus value={otroDesc} onChange={e=>setOtroDesc(e.target.value)} placeholder="Descripción (farmacia, taxi...)" style={{ width:'100%', fontSize:13, padding:'7px 10px', borderRadius:8, border:'1.5px solid #C73D6B', outline:'none', marginBottom:8 }}/>
+                <div style={{ display:'flex', gap:6, alignItems:'center' }}>
+                  <span style={{ fontSize:13, color:'#aaa' }}>$</span>
+                  <input value={otroMonto} onChange={e=>setOtroMonto(e.target.value.replace(/\D/g,''))} onKeyDown={e=>{if(e.key==='Enter')addOtro();}} placeholder="Monto" style={{ flex:1, fontSize:15, fontWeight:600, padding:'7px 10px', borderRadius:8, border:'1.5px solid #C73D6B', outline:'none', textAlign:'right' }}/>
+                  <button onClick={addOtro} style={{ fontSize:13, padding:'7px 16px', background:'#C73D6B', color:'#fff', border:'none', borderRadius:8, cursor:'pointer', fontWeight:700 }}>Agregar</button>
+                  <button onClick={()=>{setAddingOtro(false);setOtroDesc('');setOtroMonto('');}} style={{ fontSize:12, padding:'7px 10px', background:'#f0f0f0', color:'#888', border:'none', borderRadius:8, cursor:'pointer' }}>✕</button>
+                </div>
+              </div>
+            ) : (
+              <button onClick={()=>setAddingOtro(true)} style={{ width:'100%', padding:'11px', background:'none', border:'none', color:'#C73D6B', fontSize:13, fontWeight:600, cursor:'pointer', display:'flex', alignItems:'center', justifyContent:'center', gap:6 }}>
+                <span style={{ fontSize:16 }}>+</span> Agregar gasto
+              </button>
+            )}
           </div>
-        )}
-      </div>
-    </div>
-  );
-}
+
+          <Divider>Pago tarjeta</Divider>
+          <div style={{ background:'#fff', border:'1px solid #ebebeb', borderRadius:12, padding:'12px 16px', marginBottom:4 }}>
+            <div style={{ display:'flex', alignItems:'center', gap:10 }}>
+              <span style={{ fontSize:18 }}>💳</span>
+              <div style={{ flex:1, display:'flex', justifyContent:'space-between', alignItems:'center' }}>
+                <span style={{ fontSize:13, fontWeight:500, color:'#333' }}>Pago factura TC</span>
+                {editPagoTC ? (
+                  <div style={{ display:'flex', gap:4 }}>
+                    <input autoFocus value={pagoTCVal} onChange={e=>setPagoTCVal(e.target.value)}
+                      onBlur={setPagoTC} onKeyDown={e=>{if(e.key==='Enter')setPagoTC();if(e.key==='Escape')setEditPagoTC(false);}}
+                      style={{ width:95, fontSize:12, padding:'3px 6px', borderRadius:7, border:'1.5px solid #A32D2D', textAlign:'right', outline:'none' }}/>
+                    <button onClick={setPagoTC} style={{ fontSize:11, padding:'3px 7px', background:'#A32D2D', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
+                  </div>
+                ) : (
+                  <span onClick={()=>{setPagoTCVal(String(md.pagoTC||0));setEditPagoTC(true);}} style={{ fontSize:15, fontWeight:700, color:'#A32D2D', cursor:'pointer', padding:'2px 8px', borderRadius:8 }}>
+                    −{fmt(md.pagoTC||0)} ✎
+                  </span>
+                )}
+              </div>
+            </div>
+          </div>
+
+          <Divider>Lo que queda</Divider>
+          <div style={{ borderRadius:14, padding:'16px 18px', background:isPositive?'linear-gradient(135deg,#EAF3DE,#d6edca)':'linear-gradient(135deg,#FCEBEB,#f9d5d5)', border:`1px solid ${isPositive?'#C0DD97':'#F09595'}` }}>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:hasVar?8:0 }}>
+              <span style={{ fontSize:12, color:isPositive?'#4a7a20':'#8a2020', fontWeight:500 }}>{hasVar?'📌 Meta presupuestada':'Disponible presupuestado'}</span>
+              <span style={{ fontSize:hasVar?13:20, fontWeight:hasVar?500:700, color:libre_b>=0?'#3B6D11':'#A32D2D' }}>{fmt(libre_b)}</span>
+            </div>
+            {hasVar && (
+              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
+                <span style={{ fontSize:14, fontWeight:700, color:libre_a>=0?'#27500A':'#791F1F' }}>Real del mes</span>
+                <span style={{ fontSize:22, fontWeight:800, color:libre_a>=0?'#3B6D11':'#A32D2D', letterSpacing:'-1px' }}>{fmt(libre_a)}</span>
+              </div>
+            )}
+            <div style={{ height:8, borderRadius:6, overflow:'hidden', marginTop:12, background:'rgba(255,255,255,.5)', display:'flex' }}>
+              <div style={{ width:`${pctGasto}%`, background:'#E24B4A', transition:'width .6s ease' }}/>
+              <div style={{ width:`${pctTC}%`, background:'#C73D6B', transition:'width .6s ease' }}/>
+              {libreShow>0 && <div style={{ flex:1, background:isPositive?'#639922':'#aaa' }}/>}
+            </div>
+            <div style={{ display:'flex', gap:12, marginTop:6 }}>
+              <span style={{ fontSize:9, color:'#888' }}>🔴 Gastos {pctGasto}%</span>
+              <span style={{ fontSize:9, color:'#888' }}>🟣 TC {pctTC}%</span>
+              {libreShow>0 && <span style={{ fontSize:9, color:'#888' }}>🟢 Libre {100-pctGasto-pctTC}%</span>}
+            </div>
+          </div>
+
+          <div style={{ background:'#fafafa', borderRadius:10, padding:'10px 14px', marginTop:8, border:'1px solid #f0f0f0' }}>
+            {editNota ? (
+              <div>
+                <textarea value={notaVal} onChange={e=>setNotaVal(e.target.value)} onBlur={saveNota}
+                  placeholder="Notas del mes..." style={{ width:'100%', minHeight:64, fontSize:12, padding:8, borderRadius:8, border:'1px solid #ddd', background:'#fff', color:'#333', resize:'vertical', lineHeight:1.6, outline:'none' }}/>
+                <div style={{ display:'flex', gap:6, marginTop:6 }}>
+                  <button onClick={saveNota} style={{ fontSize:11, padding:'5px 12px', background:'#3B6D11', color:'#fff', border:'none', borderRadius:7, cursor:'pointer', fontWeight:600 }}>Guardar</button>
+                  <button onClick={()=>setEditNota(false)} style={{ fontSize:11, padding:'5px 12px', background:'#f0f0f0', color:'#666', border:'none', borderRadius:7, cursor:'pointer' }}>Cancelar</button>
+                </div>
+              </div>
+            ) : (
+              <div onClick={()=>{setNotaVal(md.nota||'');setEditNota(true);}} style={{ cursor:'pointer', display:'flex', gap:8 }}>
+                <span style={{ fontSize:14 }}>📝</span>
+                <span style={{ fontSize:12, color:md.nota?'#333':'#bbb', lineHeight:1.6 }}>{md.nota||'Toca para agregar notas del mes...'}</span>
+              </div>
+            )}
+          </div>
+
+        </div>
+      );
+    }
+
+    ReactDOM.createRoot(document.getElementById('root')).render(<App />);
+  </script>
+</body>
+</html>
