@@ -227,13 +227,10 @@
       const totalVarB = TEMPLATE.filter(g=>!g.fijo).reduce((s,g)=>s+g.items.reduce((ss,i)=>ss+i.budget,0),0);
       const totalBudget = totalFijo + totalVarB;
       const ingresoMes = md.ingreso || INCOME;
-      const hasVar = Object.values(md.actuals||{}).some(v=>v!==null) || otros.length>0;
-      const libre_b = ingresoMes - totalBudget - (md.pagoTC||0);
-      const libre_a = ingresoMes - totalActual - (md.pagoTC||0);
-      const libreShow = hasVar ? libre_a : libre_b;
-      const isPositive = libreShow >= 0;
-      const pctGasto = Math.min(100, Math.round(totalActual/INCOME*100));
-      const pctTC = Math.min(100-pctGasto, Math.round((md.pagoTC||0)/INCOME*100));
+      const libre = ingresoMes - totalFijo - (md.pagoTC||0) - totalVarA - totalOtros;
+      const isPositive = libre >= 0;
+      const pctGasto = Math.min(100, Math.round((totalFijo + totalVarA + totalOtros)/ingresoMes*100));
+      const pctTC = Math.min(100-pctGasto, Math.round((md.pagoTC||0)/ingresoMes*100));
 
       return (
         <div style={{ maxWidth:480, margin:'0 auto', padding:'1rem 0.75rem', fontFamily:'system-ui,-apple-system,sans-serif' }}>
@@ -526,16 +523,10 @@
 
           <Divider>Lo que queda</Divider>
           <div style={{ borderRadius:14, padding:'16px 18px', background:isPositive?'linear-gradient(135deg,#EAF3DE,#d6edca)':'linear-gradient(135deg,#FCEBEB,#f9d5d5)', border:`1px solid ${isPositive?'#C0DD97':'#F09595'}` }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline', marginBottom:hasVar?8:0 }}>
-              <span style={{ fontSize:12, color:isPositive?'#4a7a20':'#8a2020', fontWeight:500 }}>{hasVar?'📌 Meta presupuestada':'Disponible presupuestado'}</span>
-              <span style={{ fontSize:hasVar?13:20, fontWeight:hasVar?500:700, color:libre_b>=0?'#3B6D11':'#A32D2D' }}>{fmt(libre_b)}</span>
+            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
+              <span style={{ fontSize:13, fontWeight:600, color:isPositive?'#4a7a20':'#8a2020' }}>Lo que queda</span>
+              <span style={{ fontSize:26, fontWeight:800, color:isPositive?'#3B6D11':'#A32D2D', letterSpacing:'-1px' }}>{fmt(libre)}</span>
             </div>
-            {hasVar && (
-              <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
-                <span style={{ fontSize:14, fontWeight:700, color:libre_a>=0?'#27500A':'#791F1F' }}>Real del mes</span>
-                <span style={{ fontSize:22, fontWeight:800, color:libre_a>=0?'#3B6D11':'#A32D2D', letterSpacing:'-1px' }}>{fmt(libre_a)}</span>
-              </div>
-            )}
             <div style={{ height:8, borderRadius:6, overflow:'hidden', marginTop:12, background:'rgba(255,255,255,.5)', display:'flex' }}>
               <div style={{ width:`${pctGasto}%`, background:'#E24B4A', transition:'width .6s ease' }}/>
               <div style={{ width:`${pctTC}%`, background:'#C73D6B', transition:'width .6s ease' }}/>
