@@ -24,6 +24,7 @@
   <script type="text/babel">
     const { useState, useEffect, useRef } = React;
 
+    const PASSWORD = '1005';
     const fmt = n => (n < 0 ? '−' : '') + '$' + Math.abs(Math.round(n)).toLocaleString('es-CL');
     const parse = s => { const n = parseInt(String(s).replace(/\D/g, '')); return isNaN(n) ? null : n; };
     const INCOME = 3787000;
@@ -66,7 +67,6 @@
         { id: 'panoramas_ninos', desc: 'Compras y panoramas', budget: 200000 },
         { id: 'retail', desc: 'Compras retail / online', budget: 150000 },
       ]},
-
     ];
 
     const MONTHS = ['2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'];
@@ -76,16 +76,11 @@
     function fresh() {
       const a = {};
       TEMPLATE.filter(g => !g.fijo).forEach(g => g.items.forEach(i => { a[i.id] = null; }));
-      return { actuals: a, pagoTC: 0, nota: '', diaActual: new Date().getDate(), otros: [] };
+      return { actuals: a, pagoTC: 0, nota: '', diaActual: new Date().getDate(), otros: [], ingreso: null };
     }
     function makeSeed() {
       const seed = {};
       MONTHS.forEach(m => { seed[m] = fresh(); });
-      seed['2026-05'] = {
-        actuals: { bencina:89380,tag:74801,seguro_auto:92668,apv:119525,seg_christus_cas:33000,seg_christus_uc:11639,seg_fraude:1052,credito:141299,cuota_santander:17500,delivery:91452,comida_cafes:490158,panoramas_ninos:324660,retail:417453,herencia:-70000 },
-        pagoTC: 2601105, nota: 'Punto Ticket $268K reembolsado. Ropa $417K muy alto.', diaActual: 31, otros: []
-      };
-      seed['2026-06'] = { ...fresh(), pagoTC: 2000000 };
       return seed;
     }
 
@@ -98,8 +93,6 @@
         </div>
       );
     }
-
-    const PASSWORD = '1005';
 
     function Login({ onLogin }) {
       const [val, setVal] = useState('');
@@ -124,7 +117,6 @@
 
     function App() {
       const [auth, setAuth] = useState(!!localStorage.getItem('mj_auth'));
-      if (!auth) return <Login onLogin={() => setAuth(true)} />;
       const [data, setData] = useState(null);
       const [month, setMonth] = useState('2026-06');
       const [loading, setLoading] = useState(true);
@@ -136,6 +128,8 @@
       const [notaVal, setNotaVal] = useState('');
       const [editPagoTC, setEditPagoTC] = useState(false);
       const [pagoTCVal, setPagoTCVal] = useState('');
+      const [editIngreso, setEditIngreso] = useState(false);
+      const [ingresoVal, setIngresoVal] = useState('');
       const [saved, setSaved] = useState(false);
       const [saveError, setSaveError] = useState(false);
       const [editDay, setEditDay] = useState(false);
@@ -144,8 +138,7 @@
       const [addingOtro, setAddingOtro] = useState(false);
       const [otroDesc, setOtroDesc] = useState('');
       const [otroMonto, setOtroMonto] = useState('');
-      const [editIngreso, setEditIngreso] = useState(false);
-      const [ingresoVal, setIngresoVal] = useState('');
+      const [editingOtro, setEditingOtro] = useState(null);
       const dataRef = useRef(null);
 
       useEffect(() => {
@@ -154,10 +147,7 @@
           const stored = localStorage.getItem(KEY);
           if (stored) loaded = JSON.parse(stored);
         } catch(e) {}
-        if (!loaded) {
-          loaded = makeSeed();
-          try { localStorage.setItem(KEY, JSON.stringify(loaded)); } catch(e) {}
-        }
+        if (!loaded) { loaded = makeSeed(); try { localStorage.setItem(KEY, JSON.stringify(loaded)); } catch(e) {} }
         MONTHS.forEach(m => { if (!loaded[m]) loaded[m] = fresh(); });
         dataRef.current = loaded;
         setData(loaded);
@@ -165,19 +155,15 @@
       }, []);
 
       const save = d => {
-        dataRef.current = d;
-        setData(d);
-        try {
-          localStorage.setItem(KEY, JSON.stringify(d));
-          setSaveError(false);
-          setSaved(true);
-          setTimeout(() => setSaved(false), 1800);
-        } catch(e) { setSaveError(true); }
+        dataRef.current = d; setData(d);
+        try { localStorage.setItem(KEY, JSON.stringify(d)); setSaveError(false); setSaved(true); setTimeout(() => setSaved(false), 1800); }
+        catch(e) { setSaveError(true); }
       };
 
       const fd = () => dataRef.current || {};
       const fm = () => (dataRef.current && dataRef.current[month]) || fresh();
 
+      const setIngreso = () => { const v = parse(ingresoVal); save({ ...fd(), [month]: { ...fm(), ingreso: v||null } }); setEditIngreso(false); };
       const setPagoTC = () => { const v = parse(pagoTCVal); save({ ...fd(), [month]: { ...fm(), pagoTC: v||0 } }); setEditPagoTC(false); };
       const setDia = () => {
         const y = parseInt(month.split('-')[0]), mo = parseInt(month.split('-')[1])-1;
@@ -210,6 +196,7 @@
       };
       const saveNota = () => { save({ ...fd(), [month]: { ...fm(), nota: notaVal } }); setEditNota(false); };
 
+      if (!auth) return <Login onLogin={() => setAuth(true)} />;
       if (loading || !data) return (
         <div style={{ display:'flex', alignItems:'center', justifyContent:'center', height:'100vh', flexDirection:'column', gap:12 }}>
           <div style={{ width:32, height:32, borderRadius:'50%', border:'3px solid #C0DD97', borderTopColor:'#3B6D11', animation:'spin 0.8s linear infinite' }} />
@@ -220,27 +207,25 @@
       const md = data[month] || fresh();
       const midx = MONTHS.indexOf(month);
       const otros = md.otros || [];
+      const ingresoMes = md.ingreso || INCOME;
       const totalFijo = TEMPLATE.filter(g=>g.fijo).reduce((s,g)=>s+g.items.reduce((ss,i)=>ss+i.budget,0),0);
       const totalVarA = TEMPLATE.filter(g=>!g.fijo).reduce((s,g)=>s+g.items.reduce((ss,i)=>ss+(md.actuals[i.id]??0),0),0);
       const totalOtros = otros.reduce((s,o)=>s+o.amount,0);
-      const totalActual = totalFijo + totalVarA + totalOtros;
-      const totalVarB = TEMPLATE.filter(g=>!g.fijo).reduce((s,g)=>s+g.items.reduce((ss,i)=>ss+i.budget,0),0);
-      const totalBudget = totalFijo + totalVarB;
-      const ingresoMes = md.ingreso || INCOME;
       const libre = ingresoMes - totalFijo - (md.pagoTC||0) - totalVarA - totalOtros;
       const isPositive = libre >= 0;
-      const pctGasto = Math.min(100, Math.round((totalFijo + totalVarA + totalOtros)/ingresoMes*100));
+      const pctGasto = Math.min(100, Math.round((totalFijo+totalVarA+totalOtros)/ingresoMes*100));
       const pctTC = Math.min(100-pctGasto, Math.round((md.pagoTC||0)/ingresoMes*100));
 
       return (
         <div style={{ maxWidth:480, margin:'0 auto', padding:'1rem 0.75rem', fontFamily:'system-ui,-apple-system,sans-serif' }}>
 
+          {/* Header */}
           <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem', flexWrap:'wrap', gap:8 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ fontSize:20 }}>📊</span>
               <span style={{ fontSize:17, fontWeight:600, color:'#1a1a1a' }}>Mi plata del mes</span>
               {saved && <span style={{ fontSize:10, padding:'2px 7px', borderRadius:10, background:'#EAF3DE', color:'#3B6D11', fontWeight:500 }}>✓ Guardado</span>}
-              {saveError && <span style={{ fontSize:10, padding:'2px 7px', borderRadius:10, background:'#FCEBEB', color:'#A32D2D', fontWeight:600 }}>⚠ Error al guardar</span>}
+              {saveError && <span style={{ fontSize:10, padding:'2px 7px', borderRadius:10, background:'#FCEBEB', color:'#A32D2D', fontWeight:600 }}>⚠ Error</span>}
             </div>
             <div style={{ display:'flex', alignItems:'center', gap:4, background:'#f5f5f5', borderRadius:10, padding:'3px 6px' }}>
               <button onClick={()=>setMonth(MONTHS[midx-1])} disabled={midx<=0} style={{ background:'none', border:'none', cursor:midx<=0?'default':'pointer', opacity:midx<=0?.3:1, fontSize:16, padding:'2px 6px', color:'#444' }}>‹</button>
@@ -249,13 +234,14 @@
             </div>
           </div>
 
+          {/* Progreso del mes */}
           {(()=>{
             const y=parseInt(month.split('-')[0]),mo=parseInt(month.split('-')[1])-1;
             const dim=new Date(y,mo+1,0).getDate();
             const day=Math.min(Math.max(1,md.diaActual||new Date().getDate()),dim);
             const pctDay=Math.round(day/dim*100);
             const daysLeft=dim-day;
-            const spentPct=Math.round(totalActual/INCOME*100);
+            const spentPct=Math.round((totalFijo+totalVarA+totalOtros)/ingresoMes*100);
             const onTrack=spentPct<=pctDay;
             return (
               <div style={{ background:'#fff', border:'1px solid #ebebeb', borderRadius:12, padding:'11px 16px', marginBottom:8 }}>
@@ -293,31 +279,27 @@
             );
           })()}
 
-          {(()=>{
-            const ingresoMes = md.ingreso || INCOME;
-            return (
-              <div style={{ background:'linear-gradient(135deg,#EAF3DE,#d6edca)', border:'1px solid #C0DD97', borderRadius:14, padding:'12px 16px', marginBottom:8 }}>
-                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                    <span style={{ fontSize:20 }}>💼</span>
-                    <span style={{ fontSize:13, fontWeight:500, color:'#27500A' }}>Ingresos mes</span>
-                  </div>
-                  {editIngreso ? (
-                    <div style={{ display:'flex', gap:4 }}>
-                      <input autoFocus value={ingresoVal} onChange={e=>setIngresoVal(e.target.value)}
-                        onBlur={setIngreso} onKeyDown={e=>{if(e.key==='Enter')setIngreso();if(e.key==='Escape')setEditIngreso(false);}}
-                        style={{ width:110, fontSize:12, padding:'3px 6px', borderRadius:7, border:'1.5px solid #3B6D11', textAlign:'right', outline:'none' }}/>
-                      <button onClick={setIngreso} style={{ fontSize:11, padding:'3px 7px', background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
-                    </div>
-                  ) : (
-                    <span onClick={()=>{setIngresoVal(String(ingresoMes));setEditIngreso(true);}} style={{ fontSize:19, fontWeight:700, color:'#3B6D11', letterSpacing:'-0.5px', cursor:'pointer' }}>
-                      +{fmt(ingresoMes)} ✎
-                    </span>
-                  )}
-                </div>
+          {/* Ingresos */}
+          <div style={{ background:'linear-gradient(135deg,#EAF3DE,#d6edca)', border:'1px solid #C0DD97', borderRadius:14, padding:'12px 16px', marginBottom:8 }}>
+            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                <span style={{ fontSize:20 }}>💼</span>
+                <span style={{ fontSize:13, fontWeight:500, color:'#27500A' }}>Ingresos mes</span>
               </div>
-            );
-          })()}
+              {editIngreso ? (
+                <div style={{ display:'flex', gap:4 }}>
+                  <input autoFocus value={ingresoVal} onChange={e=>setIngresoVal(e.target.value)}
+                    onBlur={setIngreso} onKeyDown={e=>{if(e.key==='Enter')setIngreso();if(e.key==='Escape')setEditIngreso(false);}}
+                    style={{ width:110, fontSize:12, padding:'3px 6px', borderRadius:7, border:'1.5px solid #3B6D11', textAlign:'right', outline:'none' }}/>
+                  <button onClick={setIngreso} style={{ fontSize:11, padding:'3px 7px', background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
+                </div>
+              ) : (
+                <span onClick={()=>{setIngresoVal(String(ingresoMes));setEditIngreso(true);}} style={{ fontSize:19, fontWeight:700, color:'#3B6D11', letterSpacing:'-0.5px', cursor:'pointer' }}>
+                  +{fmt(ingresoMes)} ✎
+                </span>
+              )}
+            </div>
+          </div>
 
           <Divider>🔒 Gastos fijos — se descuentan día 1</Divider>
 
@@ -375,8 +357,8 @@
                         {grupo.meta && <span style={{ fontSize:9, padding:'2px 6px', borderRadius:6, background:'#FAEEDA', color:'#854F0B', fontWeight:600 }}>META</span>}
                       </div>
                       <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-                        <span style={{ fontSize:11, color:'#999' }}>{gb<0?'+':''}{fmt(gb)}</span>
-                        {ha && <span style={{ fontSize:11, padding:'2px 7px', borderRadius:8, fontWeight:600, background:isOver?'#FCEBEB':'#EAF3DE', color:isOver?'#A32D2D':'#3B6D11' }}>{isOver?'⚠ ':''}{gb<0?'+':''}{fmt(ga)}</span>}
+                        <span style={{ fontSize:11, color:'#999' }}>{fmt(gb)}</span>
+                        {ha && <span style={{ fontSize:11, padding:'2px 7px', borderRadius:8, fontWeight:600, background:isOver?'#FCEBEB':'#EAF3DE', color:isOver?'#A32D2D':'#3B6D11' }}>{isOver?'⚠ ':''}{fmt(ga)}</span>}
                         <span style={{ fontSize:11, color:'#bbb', display:'inline-block', transform:isOpen?'rotate(180deg)':'rotate(0deg)', transition:'transform .2s' }}>▾</span>
                       </div>
                     </div>
@@ -402,7 +384,7 @@
                         <div key={item.id} className={flash===item.id?'flash-row row-item':'row-item'} style={{ padding:'8px 4px', borderBottom:idx<grupo.items.length-1?'1px solid #f5f5f5':'none', borderRadius:6 }}>
                           <div style={{ display:'flex', alignItems:'center' }}>
                             <span style={{ fontSize:13, color:'#333', flex:1 }}>{item.desc}</span>
-                            <span style={{ fontSize:12, color:'#ccc', width:80, textAlign:'right', flexShrink:0 }}>{item.budget<0?'+':''}{fmt(item.budget)}</span>
+                            <span style={{ fontSize:12, color:'#ccc', width:80, textAlign:'right', flexShrink:0 }}>{fmt(item.budget)}</span>
                             <div style={{ width:110, flexShrink:0, textAlign:'right', display:'flex', justifyContent:'flex-end', alignItems:'center', gap:4 }}>
                               {isEditing ? (
                                 <div style={{ display:'flex', gap:3 }}>
@@ -413,7 +395,7 @@
                                 </div>
                               ) : (
                                 <>
-                                  <span onClick={()=>{setAdding({id:item.id,val:''});setEditing(null);}} style={{ fontSize:13, fontWeight:700, cursor:'pointer', padding:'3px 8px', borderRadius:8, color:actual===null?'#ccc':itemOver?'#A32D2D':'#3B6D11', background:actual===null?'#f7f7f7':'transparent', border:actual===null?'1px dashed #e0e0e0':'none' }}>{actual===null?'+ sumar':(actual<0?'+':'')+fmt(actual)}</span>
+                                  <span onClick={()=>{setAdding({id:item.id,val:''});setEditing(null);}} style={{ fontSize:13, fontWeight:700, cursor:'pointer', padding:'3px 8px', borderRadius:8, color:actual===null?'#ccc':itemOver?'#A32D2D':'#3B6D11', background:actual===null?'#f7f7f7':'transparent', border:actual===null?'1px dashed #e0e0e0':'none' }}>{actual===null?'+ sumar':fmt(actual)}</span>
                                   {actual!==null && <span onClick={()=>{setEditVal(String(actual));setEditing(item.id);setAdding(null);}} style={{ fontSize:10, color:'#ccc', cursor:'pointer', padding:'2px 3px' }}>✎</span>}
                                 </>
                               )}
@@ -441,7 +423,7 @@
                               {adding.val && (
                                 <div style={{ fontSize:11, color:'#888', marginTop:6, textAlign:'right' }}>
                                   Nuevo total → <strong style={{ color:(actual??0)+parseInt(adding.val)>item.budget&&item.budget>0?'#A32D2D':'#3B6D11' }}>{fmt((actual??0)+(parseInt(adding.val)||0))}</strong>
-                                  {item.budget>0 && <span style={{ color:'#bbb' }}> / {fmt(item.budget)}</span>}
+                                  <span style={{ color:'#bbb' }}> / {fmt(item.budget)}</span>
                                 </div>
                               )}
                             </div>
@@ -530,12 +512,12 @@
             <div style={{ height:8, borderRadius:6, overflow:'hidden', marginTop:12, background:'rgba(255,255,255,.5)', display:'flex' }}>
               <div style={{ width:`${pctGasto}%`, background:'#E24B4A', transition:'width .6s ease' }}/>
               <div style={{ width:`${pctTC}%`, background:'#C73D6B', transition:'width .6s ease' }}/>
-              {libreShow>0 && <div style={{ flex:1, background:isPositive?'#639922':'#aaa' }}/>}
+              <div style={{ flex:1, background:isPositive?'#639922':'#aaa' }}/>
             </div>
             <div style={{ display:'flex', gap:12, marginTop:6 }}>
               <span style={{ fontSize:9, color:'#888' }}>🔴 Gastos {pctGasto}%</span>
               <span style={{ fontSize:9, color:'#888' }}>🟣 TC {pctTC}%</span>
-              {libreShow>0 && <span style={{ fontSize:9, color:'#888' }}>🟢 Libre {100-pctGasto-pctTC}%</span>}
+              <span style={{ fontSize:9, color:'#888' }}>🟢 Libre {Math.max(0,100-pctGasto-pctTC)}%</span>
             </div>
           </div>
 
