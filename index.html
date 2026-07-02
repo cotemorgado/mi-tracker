@@ -45,7 +45,7 @@
         { id: 'seg_fraude', desc: 'Seguro fraude', budget: 1052 },
       ]},
       { grupo: 'Créditos / banco', icon: '🏦', color: '#A32D2D', fijo: true, items: [
-        { id: 'credito', desc: 'Crédito consumo', budget: 142000 },
+        { id: 'credito', desc: 'Crédito consumo', budget: 424230 },
         { id: 'cuota_santander', desc: 'Cuota Santander', budget: 17500 },
       ]},
       { grupo: 'Suscripciones y servicios', icon: '📺', color: '#534AB7', fijo: true, items: [
@@ -66,9 +66,7 @@
         { id: 'panoramas_ninos', desc: 'Compras y panoramas', budget: 200000 },
         { id: 'retail', desc: 'Compras retail / online', budget: 150000 },
       ]},
-      { grupo: 'Ingresos extra', icon: '💰', color: '#3B6D11', items: [
-        { id: 'herencia', desc: 'Herencia tata', budget: -70000 },
-      ]},
+
     ];
 
     const MONTHS = ['2026-05','2026-06','2026-07','2026-08','2026-09','2026-10','2026-11','2026-12'];
@@ -228,9 +226,10 @@
       const totalActual = totalFijo + totalVarA + totalOtros;
       const totalVarB = TEMPLATE.filter(g=>!g.fijo).reduce((s,g)=>s+g.items.reduce((ss,i)=>ss+i.budget,0),0);
       const totalBudget = totalFijo + totalVarB;
+      const ingresoMes = md.ingreso || INCOME;
       const hasVar = Object.values(md.actuals||{}).some(v=>v!==null) || otros.length>0;
-      const libre_b = INCOME - totalBudget - (md.pagoTC||0);
-      const libre_a = INCOME - totalActual - (md.pagoTC||0);
+      const libre_b = ingresoMes - totalBudget - (md.pagoTC||0);
+      const libre_a = ingresoMes - totalActual - (md.pagoTC||0);
       const libreShow = hasVar ? libre_a : libre_b;
       const isPositive = libreShow >= 0;
       const pctGasto = Math.min(100, Math.round(totalActual/INCOME*100));
@@ -299,11 +298,9 @@
 
           {(()=>{
             const ingresoMes = md.ingreso || INCOME;
-            const saldo = ingresoMes - totalFijo - (md.pagoTC||0) - totalVarA - totalOtros;
-            const saldoColor = saldo >= 0 ? '#3B6D11' : '#A32D2D';
             return (
               <div style={{ background:'linear-gradient(135deg,#EAF3DE,#d6edca)', border:'1px solid #C0DD97', borderRadius:14, padding:'12px 16px', marginBottom:8 }}>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
                   <div style={{ display:'flex', alignItems:'center', gap:8 }}>
                     <span style={{ fontSize:20 }}>💼</span>
                     <span style={{ fontSize:13, fontWeight:500, color:'#27500A' }}>Ingresos mes</span>
@@ -316,12 +313,10 @@
                       <button onClick={setIngreso} style={{ fontSize:11, padding:'3px 7px', background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
                     </div>
                   ) : (
-                    <span onClick={()=>{setIngresoVal(String(ingresoMes));setEditIngreso(true);}} style={{ fontSize:11, color:'#7a9a60', cursor:'pointer' }}>{fmt(ingresoMes)} ✎</span>
+                    <span onClick={()=>{setIngresoVal(String(ingresoMes));setEditIngreso(true);}} style={{ fontSize:19, fontWeight:700, color:'#3B6D11', letterSpacing:'-0.5px', cursor:'pointer' }}>
+                      +{fmt(ingresoMes)} ✎
+                    </span>
                   )}
-                </div>
-                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
-                  <span style={{ fontSize:11, color:'#5a8a2a', fontWeight:500 }}>Disponible ahora</span>
-                  <span style={{ fontSize:22, fontWeight:800, color:saldoColor, letterSpacing:'-1px', transition:'color .3s' }}>{fmt(saldo)}</span>
                 </div>
               </div>
             );
