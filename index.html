@@ -146,7 +146,8 @@
       const [addingOtro, setAddingOtro] = useState(false);
       const [otroDesc, setOtroDesc] = useState('');
       const [otroMonto, setOtroMonto] = useState('');
-      const [editingOtro, setEditingOtro] = useState(null);
+      const [editIngreso, setEditIngreso] = useState(false);
+      const [ingresoVal, setIngresoVal] = useState('');
       const dataRef = useRef(null);
 
       useEffect(() => {
@@ -296,13 +297,35 @@
             );
           })()}
 
-          <div style={{ background:'linear-gradient(135deg,#EAF3DE,#d6edca)', border:'1px solid #C0DD97', borderRadius:14, padding:'12px 16px', marginBottom:8, display:'flex', alignItems:'center', gap:10 }}>
-            <span style={{ fontSize:20 }}>💼</span>
-            <div style={{ flex:1, display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
-              <span style={{ fontSize:13, fontWeight:500, color:'#27500A' }}>Remuneración UDD</span>
-              <span style={{ fontSize:19, fontWeight:700, color:'#3B6D11', letterSpacing:'-0.5px' }}>+{fmt(INCOME)}</span>
-            </div>
-          </div>
+          {(()=>{
+            const ingresoMes = md.ingreso || INCOME;
+            const saldo = ingresoMes - totalFijo - (md.pagoTC||0) - totalVarA - totalOtros;
+            const saldoColor = saldo >= 0 ? '#3B6D11' : '#A32D2D';
+            return (
+              <div style={{ background:'linear-gradient(135deg,#EAF3DE,#d6edca)', border:'1px solid #C0DD97', borderRadius:14, padding:'12px 16px', marginBottom:8 }}>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:4 }}>
+                  <div style={{ display:'flex', alignItems:'center', gap:8 }}>
+                    <span style={{ fontSize:20 }}>💼</span>
+                    <span style={{ fontSize:13, fontWeight:500, color:'#27500A' }}>Ingresos mes</span>
+                  </div>
+                  {editIngreso ? (
+                    <div style={{ display:'flex', gap:4 }}>
+                      <input autoFocus value={ingresoVal} onChange={e=>setIngresoVal(e.target.value)}
+                        onBlur={setIngreso} onKeyDown={e=>{if(e.key==='Enter')setIngreso();if(e.key==='Escape')setEditIngreso(false);}}
+                        style={{ width:110, fontSize:12, padding:'3px 6px', borderRadius:7, border:'1.5px solid #3B6D11', textAlign:'right', outline:'none' }}/>
+                      <button onClick={setIngreso} style={{ fontSize:11, padding:'3px 7px', background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
+                    </div>
+                  ) : (
+                    <span onClick={()=>{setIngresoVal(String(ingresoMes));setEditIngreso(true);}} style={{ fontSize:11, color:'#7a9a60', cursor:'pointer' }}>{fmt(ingresoMes)} ✎</span>
+                  )}
+                </div>
+                <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
+                  <span style={{ fontSize:11, color:'#5a8a2a', fontWeight:500 }}>Disponible ahora</span>
+                  <span style={{ fontSize:22, fontWeight:800, color:saldoColor, letterSpacing:'-1px', transition:'color .3s' }}>{fmt(saldo)}</span>
+                </div>
+              </div>
+            );
+          })()}
 
           <Divider>🔒 Gastos fijos — se descuentan día 1</Divider>
 
