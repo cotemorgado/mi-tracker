@@ -118,7 +118,8 @@
     function App() {
       const [auth, setAuth] = useState(!!localStorage.getItem('mj_auth'));
       const [data, setData] = useState(null);
-      const [month, setMonth] = useState('2026-06');
+      const currentMonth = () => { const d = new Date(); return `${d.getFullYear()}-${String(d.getMonth()+1).padStart(2,'0')}`; };
+      const [month, setMonth] = useState(MONTHS.includes(currentMonth()) ? currentMonth() : '2026-06');
       const [loading, setLoading] = useState(true);
       const [openGrupo, setOpenGrupo] = useState(null);
       const [adding, setAdding] = useState(null);
@@ -219,8 +220,7 @@
       return (
         <div style={{ maxWidth:480, margin:'0 auto', padding:'1rem 0.75rem', fontFamily:'system-ui,-apple-system,sans-serif' }}>
 
-          {/* Header */}
-          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1.25rem', flexWrap:'wrap', gap:8 }}>
+          <div style={{ display:'flex', justifyContent:'space-between', alignItems:'center', marginBottom:'1rem', flexWrap:'wrap', gap:8 }}>
             <div style={{ display:'flex', alignItems:'center', gap:8 }}>
               <span style={{ fontSize:20 }}>📊</span>
               <span style={{ fontSize:17, fontWeight:600, color:'#1a1a1a' }}>Mi plata del mes</span>
@@ -232,6 +232,42 @@
               <span style={{ fontSize:13, fontWeight:600, minWidth:90, textAlign:'center', color:'#333' }}>{ML[month]} 2026</span>
               <button onClick={()=>setMonth(MONTHS[midx+1])} disabled={midx>=MONTHS.length-1} style={{ background:'none', border:'none', cursor:midx>=MONTHS.length-1?'default':'pointer', opacity:midx>=MONTHS.length-1?.3:1, fontSize:16, padding:'2px 6px', color:'#444' }}>›</button>
             </div>
+          </div>
+
+          {/* Saldo remanente — PRINCIPAL */}
+          <div style={{ borderRadius:16, padding:'18px 20px', marginBottom:8, background:isPositive?'linear-gradient(135deg,#EAF3DE,#d6edca)':'linear-gradient(135deg,#FCEBEB,#f9d5d5)', border:`1px solid ${isPositive?'#C0DD97':'#F09595'}`, boxShadow:isPositive?'0 4px 16px #3B6D1120':'0 4px 16px #A32D2D20' }}>
+            <div style={{ fontSize:11, color:isPositive?'#5a8a2a':'#8a2020', fontWeight:600, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:4 }}>Saldo disponible</div>
+            <div style={{ fontSize:36, fontWeight:800, color:isPositive?'#3B6D11':'#A32D2D', letterSpacing:'-1.5px', lineHeight:1 }}>{fmt(libre)}</div>
+            <div style={{ height:6, borderRadius:4, overflow:'hidden', marginTop:12, background:'rgba(255,255,255,.5)', display:'flex' }}>
+              <div style={{ width:`${pctGasto}%`, background:'#E24B4A', transition:'width .6s ease' }}/>
+              <div style={{ width:`${pctTC}%`, background:'#C73D6B', transition:'width .6s ease' }}/>
+              <div style={{ flex:1, background:isPositive?'#639922':'#aaa' }}/>
+            </div>
+            <div style={{ display:'flex', gap:12, marginTop:6 }}>
+              <span style={{ fontSize:9, color:'#888' }}>🔴 Gastos {pctGasto}%</span>
+              <span style={{ fontSize:9, color:'#888' }}>🟣 TC {pctTC}%</span>
+              <span style={{ fontSize:9, color:'#888' }}>🟢 Libre {Math.max(0,100-pctGasto-pctTC)}%</span>
+            </div>
+          </div>
+
+          {/* Ingresos — secundario */}
+          <div style={{ background:'#fff', border:'1px solid #ebebeb', borderRadius:12, padding:'10px 14px', marginBottom:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontSize:15 }}>💼</span>
+              <span style={{ fontSize:12, color:'#777' }}>Ingresos mes</span>
+            </div>
+            {editIngreso ? (
+              <div style={{ display:'flex', gap:4 }}>
+                <input autoFocus value={ingresoVal} onChange={e=>setIngresoVal(e.target.value)}
+                  onBlur={setIngreso} onKeyDown={e=>{if(e.key==='Enter')setIngreso();if(e.key==='Escape')setEditIngreso(false);}}
+                  style={{ width:110, fontSize:12, padding:'3px 6px', borderRadius:7, border:'1.5px solid #3B6D11', textAlign:'right', outline:'none' }}/>
+                <button onClick={setIngreso} style={{ fontSize:11, padding:'3px 7px', background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
+              </div>
+            ) : (
+              <span onClick={()=>{setIngresoVal(String(ingresoMes));setEditIngreso(true);}} style={{ fontSize:14, fontWeight:600, color:'#3B6D11', cursor:'pointer' }}>
+                +{fmt(ingresoMes)} ✎
+              </span>
+            )}
           </div>
 
           {/* Progreso del mes */}
@@ -278,42 +314,6 @@
               </div>
             );
           })()}
-
-          {/* Saldo remanente — PRINCIPAL */}
-          <div style={{ borderRadius:16, padding:'18px 20px', marginBottom:8, background:isPositive?'linear-gradient(135deg,#EAF3DE,#d6edca)':'linear-gradient(135deg,#FCEBEB,#f9d5d5)', border:`1px solid ${isPositive?'#C0DD97':'#F09595'}`, boxShadow:isPositive?'0 4px 16px #3B6D1120':'0 4px 16px #A32D2D20' }}>
-            <div style={{ fontSize:11, color:isPositive?'#5a8a2a':'#8a2020', fontWeight:600, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:4 }}>Saldo disponible</div>
-            <div style={{ fontSize:36, fontWeight:800, color:isPositive?'#3B6D11':'#A32D2D', letterSpacing:'-1.5px', lineHeight:1 }}>{fmt(libre)}</div>
-            <div style={{ height:6, borderRadius:4, overflow:'hidden', marginTop:12, background:'rgba(255,255,255,.5)', display:'flex' }}>
-              <div style={{ width:`${pctGasto}%`, background:'#E24B4A', transition:'width .6s ease' }}/>
-              <div style={{ width:`${pctTC}%`, background:'#C73D6B', transition:'width .6s ease' }}/>
-              <div style={{ flex:1, background:isPositive?'#639922':'#aaa' }}/>
-            </div>
-            <div style={{ display:'flex', gap:12, marginTop:6 }}>
-              <span style={{ fontSize:9, color:'#888' }}>🔴 Gastos {pctGasto}%</span>
-              <span style={{ fontSize:9, color:'#888' }}>🟣 TC {pctTC}%</span>
-              <span style={{ fontSize:9, color:'#888' }}>🟢 Libre {Math.max(0,100-pctGasto-pctTC)}%</span>
-            </div>
-          </div>
-
-          {/* Ingresos — secundario */}
-          <div style={{ background:'#fff', border:'1px solid #ebebeb', borderRadius:12, padding:'10px 14px', marginBottom:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
-              <span style={{ fontSize:15 }}>💼</span>
-              <span style={{ fontSize:12, color:'#777' }}>Ingresos mes</span>
-            </div>
-            {editIngreso ? (
-              <div style={{ display:'flex', gap:4 }}>
-                <input autoFocus value={ingresoVal} onChange={e=>setIngresoVal(e.target.value)}
-                  onBlur={setIngreso} onKeyDown={e=>{if(e.key==='Enter')setIngreso();if(e.key==='Escape')setEditIngreso(false);}}
-                  style={{ width:110, fontSize:12, padding:'3px 6px', borderRadius:7, border:'1.5px solid #3B6D11', textAlign:'right', outline:'none' }}/>
-                <button onClick={setIngreso} style={{ fontSize:11, padding:'3px 7px', background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
-              </div>
-            ) : (
-              <span onClick={()=>{setIngresoVal(String(ingresoMes));setEditIngreso(true);}} style={{ fontSize:14, fontWeight:600, color:'#3B6D11', cursor:'pointer' }}>
-                +{fmt(ingresoMes)} ✎
-              </span>
-            )}
-          </div>
 
           <Divider>🔒 Gastos fijos — se descuentan día 1</Divider>
 
