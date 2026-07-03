@@ -279,26 +279,40 @@
             );
           })()}
 
-          {/* Ingresos */}
-          <div style={{ background:'linear-gradient(135deg,#EAF3DE,#d6edca)', border:'1px solid #C0DD97', borderRadius:14, padding:'12px 16px', marginBottom:8 }}>
-            <div style={{ display:'flex', alignItems:'center', justifyContent:'space-between' }}>
-              <div style={{ display:'flex', alignItems:'center', gap:8 }}>
-                <span style={{ fontSize:20 }}>💼</span>
-                <span style={{ fontSize:13, fontWeight:500, color:'#27500A' }}>Ingresos mes</span>
-              </div>
-              {editIngreso ? (
-                <div style={{ display:'flex', gap:4 }}>
-                  <input autoFocus value={ingresoVal} onChange={e=>setIngresoVal(e.target.value)}
-                    onBlur={setIngreso} onKeyDown={e=>{if(e.key==='Enter')setIngreso();if(e.key==='Escape')setEditIngreso(false);}}
-                    style={{ width:110, fontSize:12, padding:'3px 6px', borderRadius:7, border:'1.5px solid #3B6D11', textAlign:'right', outline:'none' }}/>
-                  <button onClick={setIngreso} style={{ fontSize:11, padding:'3px 7px', background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
-                </div>
-              ) : (
-                <span onClick={()=>{setIngresoVal(String(ingresoMes));setEditIngreso(true);}} style={{ fontSize:19, fontWeight:700, color:'#3B6D11', letterSpacing:'-0.5px', cursor:'pointer' }}>
-                  +{fmt(ingresoMes)} ✎
-                </span>
-              )}
+          {/* Saldo remanente — PRINCIPAL */}
+          <div style={{ borderRadius:16, padding:'18px 20px', marginBottom:8, background:isPositive?'linear-gradient(135deg,#EAF3DE,#d6edca)':'linear-gradient(135deg,#FCEBEB,#f9d5d5)', border:`1px solid ${isPositive?'#C0DD97':'#F09595'}`, boxShadow:isPositive?'0 4px 16px #3B6D1120':'0 4px 16px #A32D2D20' }}>
+            <div style={{ fontSize:11, color:isPositive?'#5a8a2a':'#8a2020', fontWeight:600, textTransform:'uppercase', letterSpacing:'.06em', marginBottom:4 }}>Saldo disponible</div>
+            <div style={{ fontSize:36, fontWeight:800, color:isPositive?'#3B6D11':'#A32D2D', letterSpacing:'-1.5px', lineHeight:1 }}>{fmt(libre)}</div>
+            <div style={{ height:6, borderRadius:4, overflow:'hidden', marginTop:12, background:'rgba(255,255,255,.5)', display:'flex' }}>
+              <div style={{ width:`${pctGasto}%`, background:'#E24B4A', transition:'width .6s ease' }}/>
+              <div style={{ width:`${pctTC}%`, background:'#C73D6B', transition:'width .6s ease' }}/>
+              <div style={{ flex:1, background:isPositive?'#639922':'#aaa' }}/>
             </div>
+            <div style={{ display:'flex', gap:12, marginTop:6 }}>
+              <span style={{ fontSize:9, color:'#888' }}>🔴 Gastos {pctGasto}%</span>
+              <span style={{ fontSize:9, color:'#888' }}>🟣 TC {pctTC}%</span>
+              <span style={{ fontSize:9, color:'#888' }}>🟢 Libre {Math.max(0,100-pctGasto-pctTC)}%</span>
+            </div>
+          </div>
+
+          {/* Ingresos — secundario */}
+          <div style={{ background:'#fff', border:'1px solid #ebebeb', borderRadius:12, padding:'10px 14px', marginBottom:8, display:'flex', alignItems:'center', justifyContent:'space-between' }}>
+            <div style={{ display:'flex', alignItems:'center', gap:6 }}>
+              <span style={{ fontSize:15 }}>💼</span>
+              <span style={{ fontSize:12, color:'#777' }}>Ingresos mes</span>
+            </div>
+            {editIngreso ? (
+              <div style={{ display:'flex', gap:4 }}>
+                <input autoFocus value={ingresoVal} onChange={e=>setIngresoVal(e.target.value)}
+                  onBlur={setIngreso} onKeyDown={e=>{if(e.key==='Enter')setIngreso();if(e.key==='Escape')setEditIngreso(false);}}
+                  style={{ width:110, fontSize:12, padding:'3px 6px', borderRadius:7, border:'1.5px solid #3B6D11', textAlign:'right', outline:'none' }}/>
+                <button onClick={setIngreso} style={{ fontSize:11, padding:'3px 7px', background:'#3B6D11', color:'#fff', border:'none', borderRadius:6, cursor:'pointer', fontWeight:600 }}>✓</button>
+              </div>
+            ) : (
+              <span onClick={()=>{setIngresoVal(String(ingresoMes));setEditIngreso(true);}} style={{ fontSize:14, fontWeight:600, color:'#3B6D11', cursor:'pointer' }}>
+                +{fmt(ingresoMes)} ✎
+              </span>
+            )}
           </div>
 
           <Divider>🔒 Gastos fijos — se descuentan día 1</Divider>
@@ -500,24 +514,6 @@
                   </span>
                 )}
               </div>
-            </div>
-          </div>
-
-          <Divider>Lo que queda</Divider>
-          <div style={{ borderRadius:14, padding:'16px 18px', background:isPositive?'linear-gradient(135deg,#EAF3DE,#d6edca)':'linear-gradient(135deg,#FCEBEB,#f9d5d5)', border:`1px solid ${isPositive?'#C0DD97':'#F09595'}` }}>
-            <div style={{ display:'flex', justifyContent:'space-between', alignItems:'baseline' }}>
-              <span style={{ fontSize:13, fontWeight:600, color:isPositive?'#4a7a20':'#8a2020' }}>Lo que queda</span>
-              <span style={{ fontSize:26, fontWeight:800, color:isPositive?'#3B6D11':'#A32D2D', letterSpacing:'-1px' }}>{fmt(libre)}</span>
-            </div>
-            <div style={{ height:8, borderRadius:6, overflow:'hidden', marginTop:12, background:'rgba(255,255,255,.5)', display:'flex' }}>
-              <div style={{ width:`${pctGasto}%`, background:'#E24B4A', transition:'width .6s ease' }}/>
-              <div style={{ width:`${pctTC}%`, background:'#C73D6B', transition:'width .6s ease' }}/>
-              <div style={{ flex:1, background:isPositive?'#639922':'#aaa' }}/>
-            </div>
-            <div style={{ display:'flex', gap:12, marginTop:6 }}>
-              <span style={{ fontSize:9, color:'#888' }}>🔴 Gastos {pctGasto}%</span>
-              <span style={{ fontSize:9, color:'#888' }}>🟣 TC {pctTC}%</span>
-              <span style={{ fontSize:9, color:'#888' }}>🟢 Libre {Math.max(0,100-pctGasto-pctTC)}%</span>
             </div>
           </div>
 
